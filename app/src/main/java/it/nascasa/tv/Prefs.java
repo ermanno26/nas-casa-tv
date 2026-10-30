@@ -51,6 +51,15 @@ final class Prefs {
         sp(c).edit().putInt("sort", mode).apply();
     }
 
+    /** Decodifica audio software (piu' compatibile, evita l'audio "robotico" di alcuni decoder hardware). */
+    static boolean softAudio(Context c) {
+        return sp(c).getBoolean("softaudio", true);
+    }
+
+    static void setSoftAudio(Context c, boolean on) {
+        sp(c).edit().putBoolean("softaudio", on).apply();
+    }
+
     static long position(Context c, String url) {
         return sp(c).getLong("pos_" + url.hashCode(), 0);
     }

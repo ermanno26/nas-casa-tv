@@ -13,6 +13,14 @@ import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
+import androidx.media3.common.AudioAttributes;
+import androidx.media3.common.C;
+import androidx.media3.common.Format;
+import androidx.media3.common.Tracks;
+import androidx.media3.exoplayer.DefaultRenderersFactory;
+import androidx.media3.exoplayer.mediacodec.MediaCodecInfo;
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector;
+import androidx.media3.exoplayer.mediacodec.MediaCodecUtil;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.PlaybackException;
@@ -42,6 +50,7 @@ public class VideoActivity extends Activity {
     private TextView titleView;
     private TextView errorView;
     private ExoPlayer player;
+    private String audioInfo = "";
 
     private final Runnable hideTitle = new Runnable() {
         @Override public void run() { titleView.setVisibility(View.GONE); }
@@ -100,9 +109,29 @@ public class VideoActivity extends Activity {
 
     private void startPlayer() {
         if (player != null) return;
-        player = new ExoPlayer.Builder(this)
+        final boolean soft = Prefs.softAudio(this);
+        DefaultRenderersFactory factory = new DefaultRenderersFactory(this)
+                .setEnableDecoderFallback(true)
+                .setMediaCodecSelector(new MediaCodecSelector() {
+                    @Override
+                    public List<MediaCodecInfo> getDecoderInfos(String mimeType, boolean secure, boolean tunneling)
+                            throws MediaCodecUtil.DecoderQueryException {
+                        List<MediaCodecInfo> all = MediaCodecSelector.DEFAULT.getDecoderInfos(mimeType, secure, tunneling);
+                        if (!soft || mimeType == null || !mimeType.startsWith("audio/")) return all;
+                        // audio: prima i decoder software (Google), poi gli altri come riserva
+                        List<MediaCodecInfo> sorted = new ArrayList<>();
+                        for (MediaCodecInfo i : all) if (i.softwareOnly) sorted.add(i);
+                        for (MediaCodecInfo i : all) if (!i.softwareOnly) sorted.add(i);
+                        return sorted;
+                    }
+                });
+        player = new ExoPlayer.Builder(this, factory)
                 .setSeekBackIncrementMs(10000)
                 .setSeekForwardIncrementMs(30000)
+                .setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                        .build(), true)
                 .build();
         playerView.setPlayer(player);
 
@@ -124,6 +153,21 @@ public class VideoActivity extends Activity {
             }
 
             @Override
+            public void onTracksChanged(Tracks tracks) {
+                audioInfo = "";
+                for (Tracks.Group g : tracks.getGroups()) {
+                    if (g.getType() != C.TRACK_TYPE_AUDIO) continue;
+                    for (int t = 0; t < g.length; t++) {
+                        if (!g.isTrackSelected(t)) continue;
+                        Format f = g.getTrackFormat(t);
+                        String mime = f.sampleMimeType == null ? "?" : f.sampleMimeType.replace("audio/", "");
+                        audioInfo = "Audio: " + mime + ", " + f.sampleRate + " Hz, " + f.channelCount + " canali";
+                    }
+                }
+                showTitle();
+            }
+
+            @Override
             public void onMediaItemTransition(MediaItem mediaItem, int reason) {
                 errorView.setVisibility(View.GONE);
                 showTitle();
@@ -135,6 +179,20 @@ public class VideoActivity extends Activity {
         player.prepare();
         player.setPlayWhenReady(true);
         showTitle();
+    }
+
+    /** Cambia tra decodifica audio software e hardware e riparte dallo stesso punto. */
+    private void toggleAudioDecoder() {
+        if (player == null) return;
+        int i = player.getCurrentMediaItemIndex();
+        long pos = player.getCurrentPosition();
+        stopPlayer();
+        Prefs.setSoftAudio(this, !Prefs.softAudio(this));
+        if (i >= 0 && i < urls.size()) {
+            startIndex = i;
+            Prefs.setPosition(this, urls.get(i), pos);
+        }
+        startPlayer();
     }
 
     private void stopPlayer() {
@@ -158,7 +216,9 @@ public class VideoActivity extends Activity {
     private void showTitle() {
         int i = player != null ? player.getCurrentMediaItemIndex() : startIndex;
         if (i < 0 || i >= titles.size()) return;
-        titleView.setText(titles.get(i));
+        String mode = Prefs.softAudio(this) ? "decodifica audio: software" : "decodifica audio: hardware";
+        titleView.setText(titles.get(i) + "\n" + (audioInfo.isEmpty() ? "" : audioInfo + " - ") + mode
+                + "  (tasto Menu per cambiare)");
         titleView.setVisibility(View.VISIBLE);
         handler.removeCallbacks(hideTitle);
         handler.postDelayed(hideTitle, 4000);
@@ -186,6 +246,10 @@ public class VideoActivity extends Activity {
                 case KeyEvent.KEYCODE_DPAD_UP:
                 case KeyEvent.KEYCODE_DPAD_DOWN:
                     if (down) playerView.showController();
+                    return true;
+                case KeyEvent.KEYCODE_MENU:
+                case KeyEvent.KEYCODE_INFO:
+                    if (down && event.getRepeatCount() == 0) toggleAudioDecoder();
                     return true;
                 default:
                     break;
