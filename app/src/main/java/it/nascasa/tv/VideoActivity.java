@@ -14,6 +14,7 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.media3.common.AudioAttributes;
+import androidx.media3.exoplayer.analytics.AnalyticsListener;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
 import androidx.media3.common.Tracks;
@@ -51,6 +52,8 @@ public class VideoActivity extends Activity {
     private TextView errorView;
     private ExoPlayer player;
     private String audioInfo = "";
+    private String decoderInfo = "";
+    private int underruns;
 
     private final Runnable hideTitle = new Runnable() {
         @Override public void run() { titleView.setVisibility(View.GONE); }
@@ -109,7 +112,8 @@ public class VideoActivity extends Activity {
 
     private void startPlayer() {
         if (player != null) return;
-        final boolean soft = Prefs.softAudio(this);
+        final int mode = Prefs.audioMode(this);
+        final boolean soft = mode != 1;
         DefaultRenderersFactory factory = new DefaultRenderersFactory(this)
                 .setEnableDecoderFallback(true)
                 .setMediaCodecSelector(new MediaCodecSelector() {
@@ -130,10 +134,20 @@ public class VideoActivity extends Activity {
                 .setSeekForwardIncrementMs(30000)
                 .setAudioAttributes(new AudioAttributes.Builder()
                         .setUsage(C.USAGE_MEDIA)
-                        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                        .setContentType(mode == 2 ? C.AUDIO_CONTENT_TYPE_MUSIC : C.AUDIO_CONTENT_TYPE_MOVIE)
                         .build(), true)
                 .build();
         playerView.setPlayer(player);
+        player.addAnalyticsListener(new AnalyticsListener() {
+            public void onAudioDecoderInitialized(AnalyticsListener.EventTime t, String name, long a, long b) {
+                decoderInfo = "decoder: " + name + " -";
+                showTitle();
+            }
+
+            public void onAudioUnderrun(AnalyticsListener.EventTime t, int size, long sizeMs, long sinceMs) {
+                underruns++;
+            }
+        });
 
         List<MediaItem> items = new ArrayList<>();
         for (int i = 0; i < urls.size(); i++) {
@@ -187,7 +201,8 @@ public class VideoActivity extends Activity {
         int i = player.getCurrentMediaItemIndex();
         long pos = player.getCurrentPosition();
         stopPlayer();
-        Prefs.setSoftAudio(this, !Prefs.softAudio(this));
+        Prefs.setAudioMode(this, (Prefs.audioMode(this) + 1) % 3);
+        underruns = 0;
         if (i >= 0 && i < urls.size()) {
             startIndex = i;
             Prefs.setPosition(this, urls.get(i), pos);
@@ -216,9 +231,11 @@ public class VideoActivity extends Activity {
     private void showTitle() {
         int i = player != null ? player.getCurrentMediaItemIndex() : startIndex;
         if (i < 0 || i >= titles.size()) return;
-        String mode = Prefs.softAudio(this) ? "decodifica audio: software" : "decodifica audio: hardware";
+        int m = Prefs.audioMode(this);
+        String mode = m == 0 ? "modo 1/3: audio software" : m == 1 ? "modo 2/3: audio hardware"
+                : "modo 3/3: audio software + profilo musica";
         titleView.setText(titles.get(i) + "\n" + (audioInfo.isEmpty() ? "" : audioInfo + " - ") + mode
-                + "  (tasto Menu per cambiare)");
+                + "\n" + decoderInfo + " buchi audio: " + underruns + "   (tasto Menu = cambia modo)");
         titleView.setVisibility(View.VISIBLE);
         handler.removeCallbacks(hideTitle);
         handler.postDelayed(hideTitle, 4000);
