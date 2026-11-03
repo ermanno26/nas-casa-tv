@@ -111,3 +111,18 @@ Piccola app con pochi pulsanti: **Pulizia completa**, **Libera RAM** (chiude le 
   `am force-stop`, `am kill-all`, `pm trim-caches`. La prima volta la TV chiede
   "Consentire il debug USB?": spunta **Consenti sempre** e premi OK.
 - Non chiude mai: la home, la tastiera, il sistema e se stessa. Nella pulizia automatica non tocca le app di sistema.
+
+## 9. Home con sfondi dal NAS ("Home" di tv-detox + foto)
+
+Versione della home leggera (tv-detox, licenza MIT: vedi `home/LICENSE-tv-detox-MIT`) con una funzione in piu':
+lo sfondo puo' essere una foto presa da una cartella del NAS.
+
+- Compilazione: artifact **home-apk** nella stessa build di GitHub.
+- Installazione: `py home_install.py 192.168.1.30` (la home di prima resta installata; `--old` per tornarci).
+  Alla prima apertura ricrea la fila di app di prima (cerca per nome: YouTube, Netflix, Prime Video, Infinity,
+  RaiPlay, Stremio, Browser, AirPlay/AirScreen, NAS Casa, Pulizia TV).
+- Uso: tile **Impostazioni** > **Sfondo** > **Foto dal NAS**: scegli la cartella (si naviga come in NAS Casa),
+  poi **Quando cambiare**: foto fissa / a ogni apertura della home / ogni 5, 15, 30 minuti, 1 o 3 ore.
+- Le foto vanno caricate in quella cartella dal telefono con l'app del NAS. Vengono ritagliate in 16:9 al centro
+  (meglio foto orizzontali) e leggermente scurite. In memoria resta una sola immagine.
+- `--tasti`: prova opzionale per riavere i tasti EPG/Impostazioni/YouTube del telecomando (vedi `home_install.py`).

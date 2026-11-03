@@ -34,3 +34,9 @@ jobs:
           name: pulizia-apk
           path: cleaner/build/outputs/apk/debug/cleaner-debug.apk
           if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: home-apk
+          path: home/build/outputs/apk/debug/home-debug.apk
+          if-no-files-found: error

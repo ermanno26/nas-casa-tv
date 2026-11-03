@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 rootProject.name = "NasCasaTV"
 include ':app'
 include ':cleaner'
+include ':home'

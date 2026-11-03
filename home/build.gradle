@@ -1,0 +1,53 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    // Il codice mantiene il pacchetto originale (com.ansub.tvhome); l'app installata e' un'altra:
+    // si affianca alla home di tv-detox senza sostituirla, cosi' la vecchia resta come riserva.
+    namespace 'com.ansub.tvhome'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.nascasa.home'
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName '1.0-nas'
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file('../app/debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    // Codice della home (com/ansub, MIT) + il client DLNA gia' scritto per l'app NAS Casa.
+    sourceSets {
+        main {
+            java {
+                srcDir '../app/src/main/java'
+                include 'com/ansub/**'
+                include 'it/nascasa/tv/dlna/**'
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+}
