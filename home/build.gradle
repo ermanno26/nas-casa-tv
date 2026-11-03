@@ -31,16 +31,7 @@ android {
         }
     }
 
-    // Codice della home (com/ansub, MIT) + il client DLNA gia' scritto per l'app NAS Casa.
-    sourceSets {
-        main {
-            java {
-                srcDir '../app/src/main/java'
-                include 'com/ansub/**'
-                include 'it/nascasa/tv/dlna/**'
-            }
-        }
-    }
+    // Il codice della home (com/ansub, MIT) e una copia del client DLNA di NAS Casa (it/nascasa/tv/dlna).
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
