@@ -10,3 +10,12 @@ MOCK=$!
 trap 'kill $MOCK 2>/dev/null' EXIT
 sleep 1
 java -cp "$OUT" it.nascasa.tv.dlna.DlnaSelfTest
+
+# --- client ADB di "Pulizia TV" contro un finto adbd ---
+OUT2=$(mktemp -d)
+javac -d "$OUT2" cleaner/src/main/java/it/nascasa/pulizia/adb/*.java tests/AdbSelfTest.java
+python3 tests/mock_adbd.py 15555 &
+MOCK2=$!
+trap 'kill $MOCK $MOCK2 2>/dev/null' EXIT
+sleep 1
+java -cp "$OUT2" AdbSelfTest 15555

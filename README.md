@@ -99,3 +99,15 @@ precedente (la chiave di firma e' nel progetto), senza perdere le impostazioni.
 - Il client DLNA (`dlna/`) e' Java puro e si prova senza Android:
   `sh tests/run_tests.sh` (usa un finto NAS in `tests/mock_dlna.py`).
 - AirPlay NON e' incluso in questa app: per ora si continua a usare AirScreen.
+
+## 8. App "Pulizia TV" (seconda app, stesso progetto)
+
+Piccola app con pochi pulsanti: **Pulizia completa**, **Libera RAM** (chiude le app rimaste aperte),
+**Svuota cache**, **Chiudi app a scelta** (elenco delle app aperte, dalla piu' pesante).
+
+- Si compila con la stessa build di GitHub: in **Actions** compare anche l'artifact **pulizia-apk**.
+- Installazione: `py pulizia_install.py 192.168.1.30` (stessa cartella di `nas_install.py`).
+- Come funziona: si collega al debug di rete della TV stessa (127.0.0.1:5555) ed esegue i comandi
+  `am force-stop`, `am kill-all`, `pm trim-caches`. La prima volta la TV chiede
+  "Consentire il debug USB?": spunta **Consenti sempre** e premi OK.
+- Non chiude mai: la home, la tastiera, il sistema e se stessa. Nella pulizia automatica non tocca le app di sistema.

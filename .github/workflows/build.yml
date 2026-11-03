@@ -28,3 +28,9 @@ jobs:
           name: nas-casa-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pulizia-apk
+          path: cleaner/build/outputs/apk/debug/cleaner-debug.apk
+          if-no-files-found: error
