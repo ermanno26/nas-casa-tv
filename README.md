@@ -126,3 +126,7 @@ lo sfondo puo' essere una foto presa da una cartella del NAS.
 - Le foto vanno caricate in quella cartella dal telefono con l'app del NAS. Vengono ritagliate in 16:9 al centro
   (meglio foto orizzontali) e leggermente scurite. In memoria resta una sola immagine.
 - `--tasti`: prova opzionale per riavere i tasti EPG/Impostazioni/YouTube del telecomando (vedi `home_install.py`).
+
+### 9b. Sfondi con PNG: WebDAV
+Il server DLNA di Ugreen mostra solo i JPG. Nel menu Wallpaper c'e' "Foto dal NAS con WebDAV (anche PNG)":
+sul NAS Pannello di controllo > Servizio file > WebDAV (HTTP, porta 5005), utente di sola lettura sulla cartella.

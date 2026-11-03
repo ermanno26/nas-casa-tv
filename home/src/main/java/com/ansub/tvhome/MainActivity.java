@@ -561,7 +561,8 @@ public class MainActivity extends Activity {
         final boolean on = NasWallpaper.enabled(this);
         items.add("Sfumature colorate");
         String fn = NasWallpaper.folderName(this);
-        items.add("Foto dal NAS: " + (fn == null ? "scegli la cartella" : "cartella \"" + fn + "\""));
+        items.add("Foto dal NAS (DLNA, solo JPG)" + (fn != null && !NasWallpaper.isDav(this) ? ": \"" + fn + "\"" : ""));
+        items.add("Foto dal NAS con WebDAV (anche PNG)" + (NasWallpaper.isDav(this) && fn != null ? ": " + fn : ""));
         if (fn != null) {
             items.add("Quando cambiare: " + NasWallpaper.MODES[NasWallpaper.mode(this)]);
             items.add("Cambia foto adesso");
@@ -572,8 +573,9 @@ public class MainActivity extends Activity {
             switch (which) {
                 case 0: showWallpapers(); break;
                 case 1: pickNasServer(); break;
-                case 2: showWallpaperModes(); break;
-                case 3:
+                case 2: showDavDialog(); break;
+                case 3: showWallpaperModes(); break;
+                case 4:
                     NasWallpaper.setEnabled(this, true);
                     toast("Scarico una nuova foto dal NAS...");
                     NasWallpaper.refresh(this, () -> runOnUiThread(() -> { bgKey = ""; applyBackground(); }));
@@ -586,6 +588,54 @@ public class MainActivity extends Activity {
                     scheduleWallTick();
             }
         });
+    }
+
+    // Indirizzo, cartella, utente e password del NAS per leggere le foto via WebDAV.
+    private void showDavDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
+        LinearLayout box = new LinearLayout(builder.getContext());
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(px(40), px(16), px(40), 0);
+        final EditText addr = davField(builder, box, "Indirizzo NAS (IP:porta)", NasWallpaper.davAddress(this), false);
+        final EditText path = davField(builder, box, "Cartella (es. /Pubblico/TV Sfondi)", NasWallpaper.davPath(this), false);
+        final EditText user = davField(builder, box, "Utente", NasWallpaper.davUser(this), false);
+        final EditText pass = davField(builder, box, "Password", "", true);
+        builder.setTitle("Foto dal NAS con WebDAV")
+                .setView(box)
+                .setPositiveButton("Salva e prova", (d, w) -> {
+                    NasWallpaper.setDav(this, addr.getText().toString(), path.getText().toString(),
+                            user.getText().toString().trim(), pass.getText().toString());
+                    toast("Provo il collegamento...");
+                    new Thread(() -> {
+                        String msg;
+                        try {
+                            int n = NasWallpaper.davTest(this);
+                            msg = n == 0 ? "Collegato, ma in quella cartella non ci sono immagini."
+                                    : "Collegato: trovate " + n + " immagini.";
+                            if (n > 0) NasWallpaper.refresh(this, () -> runOnUiThread(() -> { bgKey = ""; applyBackground(); }));
+                        } catch (Exception e) {
+                            msg = "Non funziona: " + e.getMessage();
+                        }
+                        final String m = msg;
+                        runOnUiThread(() -> { toast(m); scheduleWallTick(); });
+                    }, "dav-test").start();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private EditText davField(AlertDialog.Builder b, LinearLayout box, String hint, String value, boolean secret) {
+        EditText e = new EditText(b.getContext());
+        e.setSingleLine(true);
+        e.setHint(hint);
+        e.setText(value);
+        e.setTextColor(Color.WHITE);
+        e.setHintTextColor(0x88FFFFFF);
+        e.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(28));
+        e.setInputType(InputType.TYPE_CLASS_TEXT | (secret ? InputType.TYPE_TEXT_VARIATION_PASSWORD
+                : InputType.TYPE_TEXT_VARIATION_URI));
+        box.addView(e, new LinearLayout.LayoutParams(-1, -2));
+        return e;
     }
 
     private void showWallpaperModes() {

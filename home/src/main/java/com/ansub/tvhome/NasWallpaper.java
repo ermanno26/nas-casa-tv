@@ -100,9 +100,51 @@ final class NasWallpaper {
         sp(c).edit()
                 .putString("srvname", s.name).putString("loc", s.location)
                 .putString("ctl", s.controlUrl).putString("svc", s.serviceType)
-                .putString("folder", folderId).putString("fname", name)
+                .putString("folder", folderId).putString("fname", name).putString("src", "dlna")
                 .putBoolean("on", true).putLong("list_ts", 0).putLong("last", 0).putLong("fail", 0)
                 .apply();
+    }
+
+    // ---- sorgente WebDAV (legge anche PNG e ogni altro formato immagine)
+
+    static boolean isDav(Context c) {
+        return "dav".equals(sp(c).getString("src", "dlna"));
+    }
+
+    static String davAddress(Context c) {
+        return sp(c).getString("dav_addr", HINT_HOST + ":5005");
+    }
+
+    static String davPath(Context c) {
+        return sp(c).getString("dav_path", "/Pubblico/TV Sfondi");
+    }
+
+    static String davUser(Context c) {
+        return sp(c).getString("dav_user", "");
+    }
+
+    static void setDav(Context c, String addr, String path, String user, String pass) {
+        String a = addr.trim().replace("http://", "").replace("https://", "");
+        while (a.endsWith("/")) a = a.substring(0, a.length() - 1);
+        if (a.indexOf(':') < 0) a += ":5005";
+        String pp = path.trim();
+        if (!pp.startsWith("/")) pp = "/" + pp;
+        String auth = "Basic " + android.util.Base64.encodeToString(
+                (user + ":" + pass).getBytes(java.nio.charset.StandardCharsets.UTF_8), android.util.Base64.NO_WRAP);
+        sp(c).edit().putString("src", "dav").putString("dav_addr", a).putString("dav_path", pp)
+                .putString("dav_user", user).putString("dav_auth", auth)
+                .putString("folder", "dav").putString("fname", pp)
+                .putBoolean("on", true).putLong("list_ts", 0).putLong("last", 0).putLong("fail", 0)
+                .apply();
+    }
+
+    /** Prova il collegamento: numero di immagini trovate, oppure eccezione con il motivo. */
+    static int davTest(Context c) throws IOException {
+        List<String[]> out = new ArrayList<>();
+        SharedPreferences p = sp(c);
+        Dav.collect("http://" + p.getString("dav_addr", ""), p.getString("dav_path", "/"),
+                p.getString("dav_auth", ""), 0, out, new int[] {80});
+        return out.size();
     }
 
     static File current(Context c) {
@@ -157,8 +199,11 @@ final class NasWallpaper {
 
     private static boolean change(Context c) throws Exception {
         SharedPreferences p = sp(c);
-        UpnpServer s = server(c);
-        if (s == null) return false;
+        UpnpServer s = null;
+        if (!isDav(c)) {
+            s = server(c);
+            if (s == null) return false;
+        }
         List<String[]> list = photos(c, s, false);
         if (list.isEmpty()) return false;
         String cur = p.getString("cur", "");
@@ -256,6 +301,10 @@ final class NasWallpaper {
             }
             if (!out.isEmpty()) return out;
         }
+        if (isDav(c)) {
+            Dav.collect("http://" + p.getString("dav_addr", ""), p.getString("dav_path", "/"),
+                    p.getString("dav_auth", ""), 0, out, new int[] {80});
+        } else
         // la cartella scelta e, se servono, le sottocartelle (anche per data: anno/mese...), con un limite
         collect(s, p.getString("folder", "0"), 0, out, new int[] {80});
         cache.getParentFile().mkdirs();
@@ -294,6 +343,7 @@ final class NasWallpaper {
         HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
         con.setConnectTimeout(8000);
         con.setReadTimeout(30000);
+        if (isDav(c)) con.setRequestProperty("Authorization", sp(c).getString("dav_auth", ""));
         File f = new File(c.getCacheDir(), "wall_dl.tmp");
         try (InputStream in = con.getInputStream(); FileOutputStream out = new FileOutputStream(f)) {
             byte[] buf = new byte[32 * 1024];

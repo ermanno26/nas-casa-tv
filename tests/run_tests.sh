@@ -19,3 +19,11 @@ MOCK2=$!
 trap 'kill $MOCK $MOCK2 2>/dev/null' EXIT
 sleep 1
 java -cp "$OUT2" AdbSelfTest 15555
+
+# WebDAV (sfondi con PNG)
+OUT3=$(mktemp -d)
+javac -d "$OUT3" home/src/main/java/com/ansub/tvhome/Dav.java tests/DavSelfTest.java
+python3 tests/mock_dav.py 18080 & DAVPID=$!
+sleep 1
+java -cp "$OUT3" com.ansub.tvhome.DavSelfTest 18080
+kill $DAVPID
