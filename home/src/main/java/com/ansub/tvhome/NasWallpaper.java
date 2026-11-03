@@ -256,19 +256,36 @@ final class NasWallpaper {
             }
             if (!out.isEmpty()) return out;
         }
-        List<MediaEntry> entries = browse(s, p.getString("folder", "0"));
-        for (MediaEntry e : entries) {
-            if (e.kind() != MediaEntry.Kind.PHOTO) continue;
-            MediaEntry.Res r = e.bestImage();
-            if (r == null || r.url == null || !r.isDisplayableImage()) continue;
-            out.add(new String[]{e.id, r.url});
-        }
+        // la cartella scelta e, se servono, le sottocartelle (anche per data: anno/mese...), con un limite
+        collect(s, p.getString("folder", "0"), 0, out, new int[] {80});
         cache.getParentFile().mkdirs();
         try (FileWriter w = new FileWriter(cache)) {
             for (String[] a : out) w.write(a[0].replace('\t', ' ') + "\t" + a[1] + "\n");
         }
         p.edit().putLong("list_ts", System.currentTimeMillis()).apply();
         return out;
+    }
+
+    private static void collect(UpnpServer s, String id, int depth, List<String[]> out, int[] budget)
+            throws IOException {
+        List<MediaEntry> entries = browse(s, id);
+        List<MediaEntry> subs = new ArrayList<>();
+        for (MediaEntry e : entries) {
+            if (e.container) {
+                subs.add(e);
+                continue;
+            }
+            if (e.kind() != MediaEntry.Kind.PHOTO || out.size() >= 8000) continue;
+            MediaEntry.Res r = e.bestImage();
+            if (r == null || r.url == null || !r.isDisplayableImage()) continue;
+            out.add(new String[]{e.id, r.url});
+        }
+        if (depth >= 3) return;
+        for (MediaEntry f : subs) {
+            if (budget[0] <= 0 || out.size() >= 8000) return;
+            budget[0]--;
+            collect(s, f.id, depth + 1, out, budget);
+        }
     }
 
     // ------------------------------------------------------------------ immagine

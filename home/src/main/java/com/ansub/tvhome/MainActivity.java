@@ -629,23 +629,28 @@ public class MainActivity extends Activity {
                 return;
             }
             final List<MediaEntry> folders = new ArrayList<>();
-            int photos = 0;
+            int photos = 0, videos = 0, others = 0;
             for (MediaEntry e : all) {
                 if (e.container) folders.add(e);
                 else if (e.kind() == MediaEntry.Kind.PHOTO) photos++;
+                else if (e.kind() == MediaEntry.Kind.VIDEO) videos++;
+                else others++;
             }
+            final String summary = photos + " foto" + (folders.isEmpty() ? "" : ", " + folders.size() + " cartelle")
+                    + (videos > 0 ? ", " + videos + " video" : "") + (others > 0 ? ", " + others + " altri" : "");
             Collections.sort(folders, (a, b) -> a.title.compareToIgnoreCase(b.title));
             final int nPhotos = photos;
             runOnUiThread(() -> {
                 final List<String> labels = new ArrayList<>();
-                labels.add("Usa questa cartella  (" + nPhotos + " foto)");
+                labels.add("Usa questa cartella  (" + summary + ")");
                 if (!trail.isEmpty()) labels.add("<  Cartella superiore");
                 final int offset = labels.size();
-                for (MediaEntry f : folders) labels.add(f.title);
+                for (MediaEntry f : folders)
+                    labels.add(f.childCount > 0 ? f.title + "  (" + f.childCount + ")" : f.title);
                 panel(name, labels, which -> {
                     if (which == 0) {
-                        if (nPhotos == 0) {
-                            toast("In questa cartella non ci sono foto: scegline un'altra.");
+                        if (nPhotos == 0 && folders.isEmpty()) {
+                            toast("Qui non ci sono ne' foto ne' sottocartelle: scegli un'altra cartella.");
                             browseFolder(s, id, name, trail);
                             return;
                         }
